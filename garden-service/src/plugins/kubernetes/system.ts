@@ -60,6 +60,7 @@ export async function getSystemGarden(
     _systemServices: [],
   }
 
+  console.log("getSystemGarden: calling Garden.factory")
   return Garden.factory(systemProjectPath, {
     gardenDirPath: join(ctx.gardenDirPath, "kubernetes.garden"),
     environmentName: "default",

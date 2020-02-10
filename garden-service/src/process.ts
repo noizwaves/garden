@@ -211,6 +211,7 @@ async function validateConfigChange(
   try {
     const nextGarden = await Garden.factory(garden.projectRoot, garden.opts)
     await nextGarden.getConfigGraph(log)
+    nextGarden.close()
   } catch (error) {
     if (error instanceof ConfigurationError) {
       const msg = dedent`

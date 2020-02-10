@@ -13,7 +13,7 @@ import { resolve, join } from "path"
 import { safeDump } from "js-yaml"
 import { coreCommands } from "../commands/commands"
 import { DeepPrimitiveMap } from "../config/common"
-import { shutdown, sleep, getPackageVersion } from "../util/util"
+import { shutdown, sleep, getPackageVersion, uuidv4 } from "../util/util"
 import { deline } from "../util/string"
 import {
   BooleanParameter,
@@ -55,6 +55,7 @@ import { generateBasicDebugInfoReport } from "../commands/get/get-debug-info"
 import { AnalyticsHandler } from "../analytics/analytics"
 import { defaultDotIgnoreFiles } from "../util/fs"
 import { renderError } from "../logger/renderers"
+import { BufferedEventStream } from "../platform/buffered-event-stream"
 
 const OUTPUT_RENDERERS = {
   json: (data: DeepPrimitiveMap) => {
@@ -302,6 +303,10 @@ export class GardenCli {
       const log = logger.placeholder()
       const footerLog = logger.placeholder()
 
+      // Init event & log streaming.
+      const sessionId = uuidv4()
+      const bufferedEventStream = new BufferedEventStream(log, sessionId)
+
       const contextOpts: GardenOpts = {
         commandInfo: {
           name: command.getFullName(),
@@ -327,15 +332,24 @@ export class GardenCli {
 
       do {
         try {
+          // if (garden) {
+          //   garden.clear()
+          // }
           if (command.noProject) {
             garden = await makeDummyGarden(root, contextOpts)
           } else {
+            console.log("CLI: calling Garden.factory")
             garden = await Garden.factory(root, contextOpts)
           }
+
+          if (garden.clientAuthToken) {
+            bufferedEventStream.connect(garden.events, garden.clientAuthToken, garden.platformUrl)
+          }
+
           // Register log file writers. We need to do this after the Garden class is initialised because
           // the file writers depend on the project root.
           await this.initFileWriters(logger, garden.projectRoot, garden.gardenDirPath)
-          const analytics = await AnalyticsHandler.init(garden, log)
+          const analytics = await AnalyticsHandler.init(garden, log, sessionId)
           await analytics.trackCommand(command.getFullName())
 
           cliContext.details.analytics = analytics
@@ -362,6 +376,7 @@ export class GardenCli {
             log.setState("\nCommand aborted.")
             result = {}
           }
+          console.log("garden.close()")
           await garden.close()
         } catch (err) {
           // Generate a basic report in case Garden.factory(...) fails and command is "get debug-info".

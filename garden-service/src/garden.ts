@@ -42,7 +42,7 @@ import { createPluginContext, CommandInfo } from "./plugin-context"
 import { ModuleAndRuntimeActionHandlers, RegisterPluginParam } from "./types/plugin/plugin"
 import { SUPPORTED_PLATFORMS, SupportedPlatform, DEFAULT_GARDEN_DIR_NAME } from "./constants"
 import { LogEntry } from "./logger/log-entry"
-import { EventBus } from "./events"
+import { EventBus, loggerEventNames } from "./events"
 import { Watcher } from "./watch"
 import {
   findConfigPathsInPath,
@@ -61,6 +61,8 @@ import { deline, naturalList } from "./util/string"
 import { ensureConnected } from "./db/connection"
 import { DependencyValidationGraph } from "./util/validate-dependencies"
 import { Profile } from "./util/profiling"
+import { readAuthToken, login } from "./platform/auth"
+import { LogEntryEvent } from "./platform/buffered-event-stream"
 
 export interface ActionHandlerMap<T extends keyof PluginActionHandlers> {
   [actionName: string]: PluginActionHandlers[T]
@@ -97,8 +99,9 @@ export interface GardenOpts {
 export interface GardenParams {
   artifactsPath: string
   buildDir: BuildDir
-  environmentName: string
+  clientAuthToken: string | null
   dotIgnoreFiles: string[]
+  environmentName: string
   gardenDirPath: string
   log: LogEntry
   moduleIncludePatterns?: string[]
@@ -106,6 +109,7 @@ export interface GardenParams {
   opts: GardenOpts
   outputs: OutputSpec[]
   plugins: RegisterPluginParam[]
+  platformUrl: string
   production: boolean
   projectName: string
   projectRoot: string
@@ -129,12 +133,17 @@ export class Garden {
   private watcher: Watcher
   private asyncLock: any
 
+  // Platform-related instance variables
+  public clientAuthToken: string | null
+  public platformUrl: string
+
   public readonly configStore: ConfigStore
   public readonly globalConfigStore: GlobalConfigStore
   public readonly vcs: VcsHandler
   public readonly cache: TreeCache
   private actionHelper: ActionRouter
   public readonly events: EventBus
+  private loggerEventListeners: { [eventName: string]: (payload: any) => void }
 
   public readonly production: boolean
   public readonly projectRoot: string
@@ -158,6 +167,7 @@ export class Garden {
 
   constructor(params: GardenParams) {
     this.buildDir = params.buildDir
+    this.clientAuthToken = params.clientAuthToken
     this.environmentName = params.environmentName
     this.gardenDirPath = params.gardenDirPath
     this.log = params.log
@@ -202,7 +212,9 @@ export class Garden {
     this.resolvedProviders = {}
 
     this.taskGraph = new TaskGraph(this, this.log)
-    this.events = new EventBus(this.log)
+    this.events = new EventBus()
+    this.subscribeToLogEvents()
+    // this.initBufferedEventStream()
 
     // Register plugins
     for (const plugin of [...builtinPlugins, ...params.plugins]) {
@@ -222,6 +234,11 @@ export class Garden {
     currentDirectory: string,
     opts: GardenOpts = {}
   ): Promise<InstanceType<T>> {
+    console.log("///////////////////")
+    console.log("///////////////////")
+    console.log("Garden.factory called")
+    console.log("///////////////////")
+    console.log("///////////////////")
     let { environmentName, config, gardenDirPath, plugins = [] } = opts
     if (!config) {
       config = await findProjectConfig(currentDirectory)
@@ -265,8 +282,20 @@ export class Garden {
     // Connect to the state storage
     await ensureConnected()
 
+    const clientAuthToken = "dummy-token"
+    // const clientAuthToken = await readAuthToken(log)
+    // If a client auth token exists in local storage, we assume that the user wants to be logged in to the platform.
+    // if (clientAuthToken) {
+    //   await login(log)
+    // }
+
+    // TODO: Read this from project config
+    const platformUrl = "http://ths-cloud-api.cloud.dev.garden.io"
+
     const garden = new this({
       artifactsPath,
+      clientAuthToken,
+      platformUrl,
       projectRoot,
       projectName,
       environmentName,
@@ -291,9 +320,19 @@ export class Garden {
   }
 
   /**
+   * Should be called by the CLI after watch-mode command restarts.
+   */
+  clear() {
+    // this.bufferedEventStream && this.bufferedEventStream.close()
+    this.events.removeAllListeners()
+    this.unsubscribeFromLogEvents()
+  }
+
+  /**
    * Clean up before shutting down.
    */
   async close() {
+    this.clear()
     this.watcher && (await this.watcher.stop())
   }
 
@@ -307,6 +346,36 @@ export class Garden {
 
   async processTasks(tasks: BaseTask[], opts?: ProcessTasksOpts): Promise<TaskResults> {
     return this.taskGraph.process(tasks, opts)
+  }
+
+  // initBufferedEventStream() {
+  //   if (!this.bufferedEventStream && this.clientAuthToken && this.sessionId) {
+  //     const platformUrl = "http://ths-cloud-api.cloud.dev.garden.io"
+  //     this.bufferedEventStream = new BufferedEventStream({
+  //       eventBus: this.events,
+  //       sessionId: this.sessionId,
+  //       clientAuthToken: this.clientAuthToken,
+  //       platformUrl,
+  //     })
+  //   }
+  // }
+
+  subscribeToLogEvents() {
+    // We maintain this map to facilitate unsubscribing from logger events when the Garden instance is closed.
+    const loggerEventListeners = {}
+    for (const loggerEventName of loggerEventNames) {
+      const listener = (payload: LogEntryEvent) => this.events.emit(loggerEventName, payload)
+      loggerEventListeners[loggerEventName] = listener
+      this.log.root.events.on(loggerEventName, listener)
+    }
+    this.loggerEventListeners = loggerEventListeners
+  }
+
+  unsubscribeFromLogEvents() {
+    for (const [loggerEventName, listener] of Object.entries(this.loggerEventListeners)) {
+      this.log.root.events.removeListener(loggerEventName, listener)
+    }
+    console.log("after unsubscribeFromLogEvents: log listener count", this.log.root.events.listeners.length)
   }
 
   /**

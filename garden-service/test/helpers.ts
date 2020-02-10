@@ -29,7 +29,7 @@ import { ModuleConfig } from "../src/config/module"
 import { mapValues, fromPairs } from "lodash"
 import { ModuleVersion } from "../src/vcs/vcs"
 import { GARDEN_SERVICE_ROOT, LOCAL_CONFIG_FILENAME } from "../src/constants"
-import { EventBus, Events } from "../src/events"
+import { EventBus, GardenEvents } from "../src/events"
 import { ValueOf, exec } from "../src/util/util"
 import { LogEntry } from "../src/logger/log-entry"
 import timekeeper = require("timekeeper")
@@ -303,7 +303,7 @@ export const makeTestModule = (params: Partial<ModuleConfig> = {}) => {
 
 interface EventLogEntry {
   name: string
-  payload: ValueOf<Events>
+  payload: ValueOf<GardenEvents>
 }
 
 /**
@@ -312,12 +312,12 @@ interface EventLogEntry {
 class TestEventBus extends EventBus {
   public eventLog: EventLogEntry[]
 
-  constructor(log: LogEntry) {
-    super(log)
+  constructor() {
+    super()
     this.eventLog = []
   }
 
-  emit<T extends keyof Events>(name: T, payload: Events[T]) {
+  emit<T extends keyof GardenEvents>(name: T, payload: GardenEvents[T]) {
     this.eventLog.push({ name, payload })
     return super.emit(name, payload)
   }
@@ -334,7 +334,10 @@ export class TestGarden extends Garden {
 
   constructor(params: GardenParams) {
     super(params)
-    this.events = new TestEventBus(this.log)
+    this.events = new TestEventBus()
+    // We need to re-run these two, since we've just reassigned this.events.
+    this.subscribeToLogEvents()
+    this.initBufferedEventStream()
   }
 
   setModuleConfigs(moduleConfigs: ModuleConfig[]) {

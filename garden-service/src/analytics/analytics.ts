@@ -16,7 +16,7 @@ import { SEGMENT_PROD_API_KEY, SEGMENT_DEV_API_KEY } from "../constants"
 import { LogEntry } from "../logger/log-entry"
 import hasha = require("hasha")
 import { Garden } from "../garden"
-import { Events, EventName } from "../events"
+import { GardenEvents, GardenEventName } from "../events"
 import { AnalyticsType } from "./analytics-types"
 import dedent from "dedent"
 import { getGitHubUrl } from "../docs/common"
@@ -59,7 +59,7 @@ export interface AnalyticsEventProperties {
   ciName: string | null
   system: SystemInfo
   isCI: boolean
-  sessionId: string
+  sessionId: string | null
   projectMetadata: ProjectMetadata
 }
 
@@ -106,7 +106,11 @@ export interface SegmentEvent {
   properties: AnalyticsEventProperties
 }
 
-type SupportedEvents = Events["taskPending"] | Events["taskProcessing"] | Events["taskComplete"] | Events["taskError"]
+type SupportedEvents =
+  | GardenEvents["taskPending"]
+  | GardenEvents["taskProcessing"]
+  | GardenEvents["taskComplete"]
+  | GardenEvents["taskError"]
 
 /**
  * A Segment client wrapper with utility functionalities global config and info,
@@ -134,14 +138,15 @@ export class AnalyticsHandler {
   private ciName = ci.name
   private systemConfig: SystemInfo
   private isCI = ci.isCI
-  private sessionId = uuidv4()
+  private sessionId: string
   protected garden: Garden
   private projectMetadata: ProjectMetadata
 
-  private constructor(garden: Garden, log: LogEntry) {
+  private constructor(garden: Garden, log: LogEntry, sessionId: string) {
     this.segment = new segmentClient(API_KEY, { flushAt: 20, flushInterval: 300 })
     this.log = log
     this.garden = garden
+    this.sessionId = sessionId
     this.globalConfigStore = new GlobalConfigStore()
     this.analyticsConfig = {
       userId: "",
@@ -157,9 +162,9 @@ export class AnalyticsHandler {
     }
   }
 
-  static async init(garden: Garden, log: LogEntry) {
+  static async init(garden: Garden, log: LogEntry, sessionId: string) {
     if (!AnalyticsHandler.instance) {
-      AnalyticsHandler.instance = await new AnalyticsHandler(garden, log).factory()
+      AnalyticsHandler.instance = await new AnalyticsHandler(garden, log, sessionId).factory()
     } else {
       /**
        * This init is called from within the do while loop in the cli
@@ -239,7 +244,7 @@ export class AnalyticsHandler {
   /**
    * Handler used internally to process the TaskGraph events.
    */
-  private async processEvent<T extends EventName>(name: T, payload: Events[T]) {
+  private async processEvent<T extends GardenEventName>(name: T, payload: GardenEvents[T]) {
     if (AnalyticsHandler.isSupportedEvent(name, payload)) {
       await this.trackTask(payload.batchId, payload.name, payload.type, name)
     }
@@ -255,7 +260,7 @@ export class AnalyticsHandler {
   /**
    * Typeguard to check wether we can process or not an event
    */
-  static isSupportedEvent(name: EventName, _event: Events[EventName]): _event is SupportedEvents {
+  static isSupportedEvent(name: GardenEventName, _event: GardenEvents[GardenEventName]): _event is SupportedEvents {
     const supportedEventsKeys = ["taskPending", "taskProcessing", "taskComplete", "taskError"]
     return supportedEventsKeys.includes(name)
   }
