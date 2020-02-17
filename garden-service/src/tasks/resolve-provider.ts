@@ -104,7 +104,12 @@ export class ResolveProviderTask extends BaseTask {
   async process(dependencyResults: TaskResults) {
     const resolvedProviders: Provider[] = Object.values(dependencyResults).map((result) => result && result.output)
 
-    const context = new ProviderConfigContext(this.garden, resolvedProviders, this.garden.variables)
+    const context = new ProviderConfigContext({
+      garden: this.garden,
+      resolvedProviders,
+      variables: this.garden.variables,
+      secrets: this.garden.secrets,
+    })
 
     this.log.silly(`Resolving template strings for provider ${this.config.name}`)
     let resolvedConfig = await resolveTemplateStrings(this.config, context)

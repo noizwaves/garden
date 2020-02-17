@@ -247,8 +247,6 @@ class LocalContext extends ConfigContext {
   }
 }
 
-export type SecretMap = { [secretName: string]: string }
-
 /**
  * This context is available for template strings under the `project` key in configuration files.
  */
@@ -261,17 +259,9 @@ export class ProjectConfigContext extends ConfigContext {
   )
   public local: LocalContext
 
-  @schema(
-    joiStringMap(joi.string().description("The secret's value."))
-      .description("A map of all secrets for this project in the current environment.")
-      .meta({ keyPlaceholder: "<secret-name>" })
-  )
-  public secrets: SecretMap
-
-  constructor(artifactsPath: string, secrets: SecretMap) {
+  constructor(artifactsPath: string) {
     super()
     this.local = new LocalContext(this, artifactsPath)
-    this.secrets = secrets
   }
 }
 
@@ -370,8 +360,25 @@ export class ProviderConfigContext extends ProjectConfigContext {
   @schema(joiIdentifierMap(joiPrimitive()).description("Alias for the variables field."))
   public var: PrimitiveMap
 
-  constructor(garden: Garden, resolvedProviders: Provider[], variables: PrimitiveMap, secrets: SecretMap) {
-    super(garden.artifactsPath, secrets)
+  @schema(
+    joiStringMap(joi.string().description("The secret's value."))
+      .description("A map of all secrets for this project in the current environment.")
+      .meta({ keyPlaceholder: "<secret-name>" })
+  )
+  public secrets: PrimitiveMap
+
+  constructor({
+    garden,
+    resolvedProviders,
+    variables,
+    secrets,
+  }: {
+    garden: Garden
+    resolvedProviders: Provider[]
+    variables: PrimitiveMap
+    secrets: PrimitiveMap
+  }) {
+    super(garden.artifactsPath)
     const _this = this
 
     this.environment = new EnvironmentContext(this, garden.environmentName)
@@ -382,6 +389,7 @@ export class ProviderConfigContext extends ProjectConfigContext {
     )
 
     this.var = this.variables = variables
+    this.secrets = secrets
   }
 }
 
@@ -570,17 +578,24 @@ export class ModuleConfigContext extends ProviderConfigContext {
   )
   public runtime: RuntimeConfigContext
 
-  constructor(
-    garden: Garden,
-    resolvedProviders: Provider[],
-    variables: PrimitiveMap,
-    moduleConfigs: ModuleConfig[],
-    secrets: SecretMap,
+  constructor({
+    garden,
+    resolvedProviders,
+    variables,
+    moduleConfigs,
+    secrets,
+    runtimeContext,
+  }: {
+    garden: Garden
+    resolvedProviders: Provider[]
+    variables: PrimitiveMap
+    moduleConfigs: ModuleConfig[]
+    secrets: PrimitiveMap
     // We only supply this when resolving configuration in dependency order.
     // Otherwise we pass `${runtime.*} template strings through for later resolution.
     runtimeContext?: RuntimeContext
-  ) {
-    super(garden, resolvedProviders, variables, secrets)
+  }) {
+    super({ garden, resolvedProviders, variables, secrets })
 
     const _this = this
 
@@ -614,13 +629,21 @@ export class ModuleConfigContext extends ProviderConfigContext {
  * This context is available for template strings under the `outputs` key in project configuration files.
  */
 export class OutputConfigContext extends ModuleConfigContext {
-  constructor(
-    garden: Garden,
-    resolvedProviders: Provider[],
-    variables: PrimitiveMap,
-    moduleConfigs: ModuleConfig[],
+  constructor({
+    garden,
+    resolvedProviders,
+    variables,
+    moduleConfigs,
+    secrets,
+    runtimeContext,
+  } :{
+    garden: Garden
+    resolvedProviders: Provider[]
+    variables: PrimitiveMap
+    moduleConfigs: ModuleConfig[]
+    secrets: PrimitiveMap
     runtimeContext: RuntimeContext
-  ) {
-    super(garden, resolvedProviders, variables, moduleConfigs, runtimeContext)
+  }) {
+    super({ garden, resolvedProviders, variables, moduleConfigs, secrets, runtimeContext })
   }
 }

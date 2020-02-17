@@ -62,7 +62,14 @@ export async function resolveProjectOutputs(garden: Garden, log: LogEntry): Prom
     // No need to resolve any entities
     return resolveTemplateStrings(
       garden.rawOutputs,
-      new OutputConfigContext(garden, [], garden.variables, [], emptyRuntimeContext)
+      new OutputConfigContext({
+        garden,
+        resolvedProviders: [],
+        variables: garden.variables,
+        moduleConfigs: [],
+        secrets: {},
+        runtimeContext: emptyRuntimeContext,
+      })
     )
   }
 

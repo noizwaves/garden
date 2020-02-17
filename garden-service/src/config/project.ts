@@ -22,7 +22,7 @@ import {
 } from "./common"
 import { validateWithPath } from "./validation"
 import { resolveTemplateStrings } from "../template-string"
-import { ProjectConfigContext, SecretMap } from "./config-context"
+import { ProjectConfigContext } from "./config-context"
 import { findByName, getNames } from "../util/util"
 import { ConfigurationError, ParameterError } from "../exceptions"
 import { PrimitiveMap } from "./common"
@@ -352,11 +352,7 @@ export const projectSchema = projectDocsSchema.keys({
  *
  * @param config raw project configuration
  */
-export async function resolveProjectConfig(
-  config: ProjectConfig,
-  artifactsPath: string,
-  secrets: SecretMap
-): Promise<ProjectConfig> {
+export async function resolveProjectConfig(config: ProjectConfig, artifactsPath: string): Promise<ProjectConfig> {
   // Resolve template strings for non-environment-specific fields
   const { environments = [] } = config
 
@@ -370,7 +366,7 @@ export async function resolveProjectConfig(
       variables: config.variables,
       environments: environments.map((e) => omit(e, ["providers"])),
     },
-    new ProjectConfigContext(artifactsPath, secrets)
+    new ProjectConfigContext(artifactsPath)
   )
 
   // Validate after resolving global fields

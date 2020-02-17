@@ -139,6 +139,7 @@ export class Garden {
   public readonly projectName: string
   public readonly environmentName: string
   public readonly variables: PrimitiveMap
+  public readonly secrets: PrimitiveMap
   public readonly projectSources: SourceConfig[]
   public readonly buildDir: BuildDir
   public readonly gardenDirPath: string
@@ -168,6 +169,7 @@ export class Garden {
     this.projectSources = params.projectSources || []
     this.providerConfigs = params.providerConfigs
     this.variables = params.variables
+    this.secrets = {}
     this.workingCopyId = params.workingCopyId
     this.dotIgnoreFiles = params.dotIgnoreFiles
     this.moduleIncludePatterns = params.moduleIncludePatterns
@@ -237,14 +239,17 @@ export class Garden {
     const artifactsPath = resolve(gardenDirPath, "artifacts")
     await ensureDir(artifactsPath)
 
+    config = await resolveProjectConfig(config, artifactsPath)
+
     /**
      * TODO: Check if the user is logged in to the platform.
      * If logged in, fetch secrets and populate them into this map.
      * If not logged in, leave the map empty.
      */
-    const secrets = {}
+    // if (logged in) {
+    //   await this.getSecrets(config)
+    // }
 
-    config = await resolveProjectConfig(config, artifactsPath, secrets)
 
     const { defaultEnvironment, name: projectName, sources: projectSources, path: projectRoot } = config
 
@@ -573,12 +578,26 @@ export class Garden {
 
   async getModuleConfigContext(runtimeContext?: RuntimeContext) {
     const providers = await this.resolveProviders()
-    return new ModuleConfigContext(this, providers, this.variables, Object.values(this.moduleConfigs), runtimeContext)
+    return new ModuleConfigContext({
+      garden: this,
+      resolvedProviders: providers,
+      variables: this.variables,
+      moduleConfigs: Object.values(this.moduleConfigs),
+      secrets: this.secrets,
+      runtimeContext,
+    })
   }
 
   async getOutputConfigContext(runtimeContext: RuntimeContext) {
     const providers = await this.resolveProviders()
-    return new OutputConfigContext(this, providers, this.variables, Object.values(this.moduleConfigs), runtimeContext)
+    return new OutputConfigContext({
+      garden: this,
+      resolvedProviders: providers,
+      variables: this.variables,
+      moduleConfigs: Object.values(this.moduleConfigs),
+      secrets: this.secrets,
+      runtimeContext,
+    })
   }
 
   /**

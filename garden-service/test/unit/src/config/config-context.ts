@@ -233,7 +233,7 @@ describe("ConfigContext", () => {
 describe("ProjectConfigContext", () => {
   it("should resolve local env variables", async () => {
     process.env.TEST_VARIABLE = "value"
-    const c = new ProjectConfigContext("/tmp", {})
+    const c = new ProjectConfigContext("/tmp")
     expect(await c.resolve({ key: ["local", "env", "TEST_VARIABLE"], nodePath: [], opts: {} })).to.eql({
       resolved: "value",
     })
@@ -241,16 +241,9 @@ describe("ProjectConfigContext", () => {
   })
 
   it("should resolve the local platform", async () => {
-    const c = new ProjectConfigContext("/tmp", {})
+    const c = new ProjectConfigContext("/tmp")
     expect(await c.resolve({ key: ["local", "platform"], nodePath: [], opts: {} })).to.eql({
       resolved: process.platform,
-    })
-  })
-
-  it("should resolve project secrets", async () => {
-    const c = new ProjectConfigContext("/tmp", { mySecret: "mySecretValue" })
-    expect(await c.resolve({ key: ["secrets", "mySecret"], nodePath: [], opts: {} })).to.eql({
-      resolved: "mySecretValue",
     })
   })
 })
@@ -262,12 +255,13 @@ describe("ModuleConfigContext", () => {
   before(async () => {
     garden = await makeTestGardenA()
     await garden.scanModules()
-    c = new ModuleConfigContext(
+    c = new ModuleConfigContext({
       garden,
-      await garden.resolveProviders(),
-      garden.variables,
-      Object.values((<any>garden).moduleConfigs)
-    )
+      resolvedProviders: await garden.resolveProviders(),
+      variables: garden.variables,
+      moduleConfigs: Object.values((<any>garden).moduleConfigs),
+      secrets: { someSecret: "someSecretValue" },
+    })
   })
 
   it("should resolve local env variables", async () => {
@@ -317,6 +311,12 @@ describe("ModuleConfigContext", () => {
     expect(await c.resolve({ key: ["var", "some"], nodePath: [], opts: {} })).to.eql({ resolved: "variable" })
   })
 
+  it("should resolve a secret", async () => {
+    expect(await c.resolve({ key: ["secrets", "someSecret"], nodePath: [], opts: {} })).to.eql({
+      resolved: "someSecretValue",
+    })
+  })
+
   context("runtimeContext is not set", () => {
     it("should return runtime template strings unchanged if allowPartial=true", async () => {
       expect(await c.resolve({ key: ["runtime", "some", "key"], nodePath: [], opts: { allowPartial: true } })).to.eql({
@@ -352,6 +352,8 @@ describe("ModuleConfigContext", () => {
       const serviceB = await graph.getService("service-b")
       const taskB = await graph.getTask("task-b")
 
+      const secrets = {}
+
       const runtimeContext = await prepareRuntimeContext({
         garden,
         graph,
@@ -384,13 +386,14 @@ describe("ModuleConfigContext", () => {
         },
       })
 
-      withRuntime = new ModuleConfigContext(
+      withRuntime = new ModuleConfigContext({
         garden,
-        await garden.resolveProviders(),
-        garden.variables,
-        Object.values((<any>garden).moduleConfigs),
-        runtimeContext
-      )
+        resolvedProviders: await garden.resolveProviders(),
+        variables: garden.variables,
+        moduleConfigs: Object.values((<any>garden).moduleConfigs),
+        runtimeContext,
+        secrets,
+      })
     })
 
     it("should resolve service outputs", async () => {
