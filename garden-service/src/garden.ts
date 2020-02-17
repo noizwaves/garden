@@ -237,7 +237,14 @@ export class Garden {
     const artifactsPath = resolve(gardenDirPath, "artifacts")
     await ensureDir(artifactsPath)
 
-    config = await resolveProjectConfig(config, artifactsPath)
+    /**
+     * TODO: Check if the user is logged in to the platform.
+     * If logged in, fetch secrets and populate them into this map.
+     * If not logged in, leave the map empty.
+     */
+    const secrets = {}
+
+    config = await resolveProjectConfig(config, artifactsPath, secrets)
 
     const { defaultEnvironment, name: projectName, sources: projectSources, path: projectRoot } = config
 

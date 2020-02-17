@@ -247,9 +247,12 @@ class LocalContext extends ConfigContext {
   }
 }
 
+export type SecretMap = { [secretName: string]: string }
+
 /**
  * This context is available for template strings under the `project` key in configuration files.
  */
+
 export class ProjectConfigContext extends ConfigContext {
   @schema(
     LocalContext.getSchema().description(
@@ -258,9 +261,17 @@ export class ProjectConfigContext extends ConfigContext {
   )
   public local: LocalContext
 
-  constructor(artifactsPath: string) {
+  @schema(
+    joiStringMap(joi.string().description("The secret's value."))
+      .description("A map of all secrets for this project in the current environment.")
+      .meta({ keyPlaceholder: "<secret-name>" })
+  )
+  public secrets: SecretMap
+
+  constructor(artifactsPath: string, secrets: SecretMap) {
     super()
     this.local = new LocalContext(this, artifactsPath)
+    this.secrets = secrets
   }
 }
 
@@ -359,8 +370,8 @@ export class ProviderConfigContext extends ProjectConfigContext {
   @schema(joiIdentifierMap(joiPrimitive()).description("Alias for the variables field."))
   public var: PrimitiveMap
 
-  constructor(garden: Garden, resolvedProviders: Provider[], variables: PrimitiveMap) {
-    super(garden.artifactsPath)
+  constructor(garden: Garden, resolvedProviders: Provider[], variables: PrimitiveMap, secrets: SecretMap) {
+    super(garden.artifactsPath, secrets)
     const _this = this
 
     this.environment = new EnvironmentContext(this, garden.environmentName)
@@ -564,11 +575,12 @@ export class ModuleConfigContext extends ProviderConfigContext {
     resolvedProviders: Provider[],
     variables: PrimitiveMap,
     moduleConfigs: ModuleConfig[],
+    secrets: SecretMap,
     // We only supply this when resolving configuration in dependency order.
     // Otherwise we pass `${runtime.*} template strings through for later resolution.
     runtimeContext?: RuntimeContext
   ) {
-    super(garden, resolvedProviders, variables)
+    super(garden, resolvedProviders, variables, secrets)
 
     const _this = this
 
