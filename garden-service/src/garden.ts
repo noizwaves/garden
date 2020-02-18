@@ -60,6 +60,7 @@ import { loadPlugins, getDependencyOrder, getModuleTypes } from "./plugins"
 import { deline, naturalList } from "./util/string"
 import dedent from "dedent"
 import { ensureConnected } from "./db/connection"
+import { getSecrets } from "./secrets"
 
 export interface ActionHandlerMap<T extends keyof PluginActionHandlers> {
   [actionName: string]: PluginActionHandlers[T]
@@ -111,6 +112,7 @@ export interface GardenParams {
   projectSources?: SourceConfig[]
   providerConfigs: ProviderConfig[]
   variables: PrimitiveMap
+  secrets: PrimitiveMap
   vcs: VcsHandler
   workingCopyId: string
 }
@@ -169,7 +171,7 @@ export class Garden {
     this.projectSources = params.projectSources || []
     this.providerConfigs = params.providerConfigs
     this.variables = params.variables
-    this.secrets = {}
+    this.secrets = params.secrets
     this.workingCopyId = params.workingCopyId
     this.dotIgnoreFiles = params.dotIgnoreFiles
     this.moduleIncludePatterns = params.moduleIncludePatterns
@@ -246,11 +248,10 @@ export class Garden {
      * If logged in, fetch secrets and populate them into this map.
      * If not logged in, leave the map empty.
      */
-    // if (logged in) {
-    //   await this.getSecrets(config)
-    // }
-
-
+     
+    const secrets = await getSecrets(config)
+    
+  
     const { defaultEnvironment, name: projectName, sources: projectSources, path: projectRoot } = config
 
     if (!environmentName) {
@@ -280,6 +281,7 @@ export class Garden {
       projectName,
       environmentName,
       variables,
+      secrets,
       projectSources,
       buildDir,
       production,
