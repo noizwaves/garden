@@ -269,6 +269,22 @@ Number, string or boolean
 | --------------------------- |
 | `number | string | boolean` |
 
+### `${secrets.*}`
+
+A map of all secrets for this project in the current environment.
+
+| Type     |
+| -------- |
+| `object` |
+
+### `${secrets.<secret-name>}`
+
+The secret's value.
+
+| Type     |
+| -------- |
+| `string` |
+
 
 ## Module configuration context
 
@@ -461,6 +477,22 @@ Number, string or boolean
 | Type                        |
 | --------------------------- |
 | `number | string | boolean` |
+
+### `${secrets.*}`
+
+A map of all secrets for this project in the current environment.
+
+| Type     |
+| -------- |
+| `object` |
+
+### `${secrets.<secret-name>}`
+
+The secret's value.
+
+| Type     |
+| -------- |
+| `string` |
 
 ### `${modules.*}`
 
@@ -776,6 +808,22 @@ Number, string or boolean
 | Type                        |
 | --------------------------- |
 | `number | string | boolean` |
+
+### `${secrets.*}`
+
+A map of all secrets for this project in the current environment.
+
+| Type     |
+| -------- |
+| `object` |
+
+### `${secrets.<secret-name>}`
+
+The secret's value.
+
+| Type     |
+| -------- |
+| `string` |
 
 ### `${modules.*}`
 
