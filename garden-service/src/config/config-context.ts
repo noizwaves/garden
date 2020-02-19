@@ -596,7 +596,6 @@ export class ModuleConfigContext extends ProviderConfigContext {
     runtimeContext?: RuntimeContext
   }) {
     super({ garden, resolvedProviders, variables, secrets })
-
     const _this = this
 
     this.modules = new Map(

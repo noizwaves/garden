@@ -3,10 +3,11 @@ package main
 import (
 	"fmt"
 	"net/http"
+	"os"
 )
 
 func handler(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprint(w, "Hello from Go!")
+	fmt.Fprint(w, os.Getenv("THE_SEC"))
 }
 
 func main() {

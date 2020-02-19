@@ -4,6 +4,8 @@ description: Backend service container
 type: container
 services:
   - name: backend
+    env:
+      THE_SEC: "${secrets.maryhad}"
     ports:
       - name: http
         containerPort: 8080
