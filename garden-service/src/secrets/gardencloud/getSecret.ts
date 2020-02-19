@@ -1,3 +1,11 @@
+/*
+ * Copyright (C) 2018-2020 Garden Technologies, Inc. <info@garden.io>
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ */
+
 import request = require('request-promise-native');
 const GARDEN_CLOUD_HOSTNAME = process.env.GARDEN_CLOUD_URL || "https://cloud.garden.io"
 // const GARDEN_CLOUD_VERSION = "v1"
