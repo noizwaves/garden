@@ -243,20 +243,18 @@ export class Garden {
 
     config = await resolveProjectConfig(config, artifactsPath)
 
-    /**
-     * TODO: Check if the user is logged in to the platform.
-     * If logged in, fetch secrets and populate them into this map.
-     * If not logged in, leave the map empty.
-     */
-     
-    const secrets = await getSecrets(config)
-    
-  
     const { defaultEnvironment, name: projectName, sources: projectSources, path: projectRoot } = config
 
     if (!environmentName) {
       environmentName = defaultEnvironment
     }
+
+    /**
+     * TODO: Check if the user is logged in to the platform.
+     * If logged in, fetch secrets and populate them into this map.
+     * If not logged in throw a 401 error or trigger a login process
+     */
+    const secrets = await getSecrets(config, environmentName)
 
     const { providers, variables, production } = await pickEnvironment(config, environmentName)
 
