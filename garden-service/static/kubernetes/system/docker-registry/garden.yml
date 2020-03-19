@@ -26,3 +26,8 @@ values:
     size: ${var.registry-storage-size}
     storageClass: ${var.registry-storage-class}
     deleteEnabled: true
+  tolerations:
+    - key: "garden-system"
+      operator: "Equal"
+      value: "true"
+      effect: "NoSchedule"

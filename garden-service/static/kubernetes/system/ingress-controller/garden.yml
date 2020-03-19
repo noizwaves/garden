@@ -24,5 +24,10 @@ values:
     service:
       omitClusterIP: true
     minReadySeconds: 1
+    tolerations:
+      - key: "garden-system"
+        operator: "Equal"
+        value: "true"
+        effect: "NoSchedule"
   defaultBackend:
     enabled: false

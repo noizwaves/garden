@@ -26,6 +26,7 @@ import { combineStates } from "../../types/service"
 import { KubernetesResource } from "./types"
 import { defaultDotIgnoreFiles } from "../../util/fs"
 import { LogLevel } from "../../logger/log-node"
+import { ConftestProviderConfig } from "../conftest/conftest"
 
 const GARDEN_VERSION = getPackageVersion()
 const SYSTEM_NAMESPACE_MIN_VERSION = "0.9.0"
@@ -51,6 +52,13 @@ export async function getSystemGarden(
 ): Promise<Garden> {
   const systemNamespace = await getSystemNamespace(ctx.provider, log)
 
+  const conftest: ConftestProviderConfig = {
+    environments: ["default"],
+    name: "conftest-kubernetes",
+    policyPath: "./policy",
+    testFailureThreshold: "warn",
+  }
+
   const sysProvider: KubernetesConfig = {
     ...ctx.provider.config,
     environments: ["default"],
@@ -71,7 +79,7 @@ export async function getSystemGarden(
       defaultEnvironment: "default",
       dotIgnoreFiles: defaultDotIgnoreFiles,
       environments: [{ name: "default", variables: {} }],
-      providers: [sysProvider],
+      providers: [sysProvider, conftest],
       variables,
     },
     commandInfo: ctx.command,

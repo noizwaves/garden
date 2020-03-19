@@ -34,7 +34,7 @@ import { ConfigurationError } from "../../exceptions"
 import Bluebird from "bluebird"
 import { readSecret } from "./secrets"
 import { dockerAuthSecretName, dockerAuthSecretKey } from "./constants"
-import { V1Secret } from "@kubernetes/client-node"
+import { V1Secret, V1Toleration } from "@kubernetes/client-node"
 import { KubernetesResource } from "./types"
 import { compareDeployedResources } from "./status/status"
 import { PrimitiveMap } from "../../config/common"
@@ -418,6 +418,15 @@ export function getKubernetesSystemVariables(config: KubernetesConfig) {
   const nfsStorageClass = getNfsStorageClass(config)
   const syncStorageClass = config.storage.sync.storageClass || nfsStorageClass
   const systemNamespace = config.gardenSystemNamespace
+  const systemTolerations: V1Toleration[] = [
+    {
+      key: "garden-system",
+      operator: "Equal",
+      value: "true",
+      effect: "NoSchedule",
+    },
+  ]
+  const registryProxyTolerations = config.registryProxyTolerations || systemTolerations
 
   return {
     "namespace": systemNamespace,
@@ -456,7 +465,8 @@ export function getKubernetesSystemVariables(config: KubernetesConfig) {
 
     // Stringifying the tolerations since variable values should be primitives.
     // Helm handles the decoding automatically.
-    "registry-proxy-tolerations": JSON.stringify(config.registryProxyTolerations),
+    "registry-proxy-tolerations": JSON.stringify(registryProxyTolerations),
+    "system-tolerations": JSON.stringify(systemTolerations),
   }
 }
 
