@@ -114,7 +114,7 @@ export class DevCommand extends Command<DevCommandArgs, DevCommandOpts> {
     this.server.setGarden(garden)
 
     const graph = await garden.getConfigGraph(log)
-    const modules = await graph.getModules()
+    const modules = graph.getModules()
 
     const skipTests = opts["skip-tests"]
 
@@ -208,7 +208,7 @@ export async function getDevCommandInitialTasks({
           })
 
       // Deploy all enabled services in module
-      const services = await graph.getServices({ names: module.serviceNames, includeDisabled: true })
+      const services = graph.getServices({ names: module.serviceNames, includeDisabled: true })
       const deployTasks = services
         .filter((s) => !s.disabled)
         .map(
