@@ -25,7 +25,7 @@ export async function configureMicrok8sAddons(log: LogEntry, addons: string[]) {
     statusCommandResult = await exec("microk8s.status", [])
     status = statusCommandResult.stdout
   } catch (err) {
-    if (err.all?.includes("permission denied")) {
+    if (err.all?.includes("permission denied") || err.all?.includes("Insufficient permissions")) {
       log.warn(
         chalk.yellow(
           deline`Unable to get microk8s status and manage addons. You may need to add the current user to the microk8s
@@ -33,6 +33,8 @@ export async function configureMicrok8sAddons(log: LogEntry, addons: string[]) {
         )
       )
       return
+    } else {
+      statusCommandResult = err
     }
   }
 
