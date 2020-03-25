@@ -469,6 +469,24 @@ jobs:
             sudo apt update
             sudo apt install snapd nfs-common
       - run:
+          name: Install and start microk8s
+          command: |
+            sudo snap install microk8s --classic --channel=<<parameters.kubernetesVersion>>/stable
+            sudo microk8s.status --wait-ready --timeout=300
+            sudo microk8s.enable dns storage registry
+            sudo usermod -a -G microk8s circleci
+            echo "********* microk8s ready! ************"
+
+            # Allow intra-pod communication
+            sudo iptables -P FORWARD ACCEPT
+
+            # Set up kubeconfig and environment
+            mkdir -p /home/circleci/.kube
+            sudo sh -c 'microk8s.kubectl config view --raw > /home/circleci/.kube/config'
+            sudo chown -R circleci:circleci /home/circleci/.kube
+            echo 'export PATH=/snap/bin:$PATH' >> $BASH_ENV
+            echo "********* env prepped! *********"
+      - run:
           name: Update Node.js
           command: |
             # NVM is already installed, we just need to load it...
@@ -487,25 +505,15 @@ jobs:
       - run: npm run bootstrap
       - run: npm run build
       - run:
-          name: Install and start microk8s
-          command: |
-            sudo snap install microk8s --classic --channel=<<parameters.kubernetesVersion>>/stable
-            sudo microk8s.status --wait-ready --timeout=300
-
-            # Make microk8s commands work without sudo in subsequent steps
-            sudo usermod -a -G microk8s circleci
-
-            # Set up kubeconfig
-            mkdir -p /home/circleci/.kube
-            sudo sh -c 'microk8s.kubectl config view --raw > /home/circleci/.kube/config'
-            sudo chown -R circleci:circleci /home/circleci/.kube
-
-            # Allow intra-pod communication
-            sudo iptables -P FORWARD ACCEPT
-      - run:
           name: Integ tests
-          # Note: We skip tests that only work for remote environments
-          command: cd garden-service && npm run integ-local -- -b
+          command: |
+            cd garden-service
+            # Notes:
+            # - We skip tests that only work for remote environments
+            # - Need to run with sudo to work with microk8s, because CircleCI doesn't allow us to log out
+            #   and back in to add the circleci user to the microk8s group.
+            # - We skip cluster-docker because privileges containers are not allowed in microk8s.
+            sudo -E npm run integ-local -- -b -g "cluster-docker"
       - run:
           name: Deploy demo-project
           command: sudo -E ./garden-service/bin/garden deploy --root examples/demo-project --logger-type basic
