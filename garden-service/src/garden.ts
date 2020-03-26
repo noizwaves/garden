@@ -131,9 +131,6 @@ export class Garden {
   private watcher: Watcher
   private asyncLock: any
 
-  // Platform-related instance variables
-  private clientAuthToken: string | null
-
   public readonly configStore: ConfigStore
   public readonly globalConfigStore: GlobalConfigStore
   public readonly vcs: VcsHandler
@@ -163,7 +160,6 @@ export class Garden {
 
   constructor(params: GardenParams) {
     this.buildDir = params.buildDir
-    this.clientAuthToken = params.clientAuthToken
     this.environmentName = params.environmentName
     this.gardenDirPath = params.gardenDirPath
     this.log = params.log
