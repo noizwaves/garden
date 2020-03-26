@@ -512,8 +512,9 @@ jobs:
             # - We skip tests that only work for remote environments
             # - Need to run with sudo to work with microk8s, because CircleCI doesn't allow us to log out
             #   and back in to add the circleci user to the microk8s group.
-            # - We skip cluster-docker because privileges containers are not allowed in microk8s.
-            sudo -E npm run integ-local -- -b -g "cluster-docker"
+            # - We currently don't support in-cluster building on microk8s.
+            export GARDEN_SKIP_TESTS="cluster-docker kaniko remote-only"
+            sudo -E npm run integ-local -- -b
       - run:
           name: Deploy demo-project
           command: sudo -E ./garden-service/bin/garden deploy --root examples/demo-project --logger-type basic
