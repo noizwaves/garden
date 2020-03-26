@@ -17,12 +17,13 @@ import Router = require("koa-router")
 import getPort = require("get-port")
 import { ClientAuthToken } from "../db/entities/client-auth-token"
 import { LogEntry } from "../logger/log-entry"
+import { ChildProcess } from "child_process"
 
 export const DEFAULT_AUTH_REDIRECT_PORT = 9776
 
 // TODO: Read these values from config and pass them to the login function.
-const backendURL = "http://ths-cloud-api.cloud.dev.garden.io"
-const frontendURL = "http://ths-cloud.cloud.dev.garden.io"
+
+const GARDEN_CLOUD = process.env.GARDEN_CLOUD
 
 // TODO: Add error handling and tests for all of this
 
@@ -33,6 +34,7 @@ export async function login(log: LogEntry): Promise<string> {
   const savedToken = await readAuthToken(log)
 
   // Ping platform with saved token (if it exists)
+  
   if (savedToken) {
     log.debug("Local client auth token found, verifying it with platform...")
     if (await checkClientAuthToken(savedToken, log)) {
@@ -63,9 +65,9 @@ export async function login(log: LogEntry): Promise<string> {
  * Checks with the backend whether the provided client auth token is valid.
  */
 async function checkClientAuthToken(token: string, log: LogEntry): Promise<boolean> {
-  const res = await axios.get(`${backendURL}/client-token/verify/${token}`)
-  log.debug(`Checked client auth token with platform - valid: ${res.data.valid}`)
-  return !!res.data.valid
+  const res = await axios.get(`http://${GARDEN_CLOUD}/token/verify?${qs.stringify({token})}`)
+  log.debug(`Checked client auth token with platform - valid: ${res.data.data.valid}`)
+  return !!res.data.data.valid
 }
 
 /**
@@ -133,6 +135,7 @@ export class AuthRedirectServer {
   private server: Server
   private app: Koa
   private events: EventEmitter2
+  private browser: ChildProcess
 
   constructor(events: EventEmitter2, log: LogEntry, public port?: number) {
     this.events = events
@@ -150,8 +153,8 @@ export class AuthRedirectServer {
 
     await this.createApp()
 
-    const query = { redirect_url: `http://localhost:${this.port}` }
-    open(`${frontendURL}/login-client?${qs.stringify(query)}`)
+    const query = { cliport: `${this.port}` }
+    open(`http://${GARDEN_CLOUD}/cli/login/?${qs.stringify(query)}`)
   }
 
   async close() {
@@ -163,9 +166,10 @@ export class AuthRedirectServer {
     const app = new Koa()
     const http = new Router()
     http.get("/", async (ctx) => {
-      const token = ctx.request.query.client_auth_token
+      const token = ctx.request.query.jwt
       this.log.debug("Received client auth token")
       this.events.emit("receivedToken", { token })
+      ctx.redirect("http://www.garden.io")
     })
     app.use(bodyParser())
     app.use(http.allowedMethods())
