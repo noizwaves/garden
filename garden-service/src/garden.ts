@@ -61,7 +61,7 @@ import { deline, naturalList } from "./util/string"
 import { ensureConnected } from "./db/connection"
 import { DependencyValidationGraph } from "./util/validate-dependencies"
 import { Profile } from "./util/profiling"
-import { ResolveModuleTask } from "./tasks/resolve-module"
+import { ResolveModuleTask, getResolvedModules } from "./tasks/resolve-module"
 
 export interface ActionHandlerMap<T extends keyof PluginActionHandlers> {
   [actionName: string]: PluginActionHandlers[T]
@@ -637,9 +637,7 @@ export class Garden {
         errors,
       })
     }
-    const resolvedModules: Module[] = Object.values(results)
-      .filter((r) => r && r.type === "resolve-module")
-      .map((r) => r!.output!)
+    const resolvedModules = getResolvedModules(results)
 
     const actions = await this.getActionRouter()
     const moduleTypes = await this.getModuleTypes()
@@ -666,26 +664,25 @@ export class Garden {
         continue
       }
 
-      // We clear the graph below whenever an augmentGraph handler adds/modifies modules, and re-init here
+      // We clear the graph below whenever an augmentGraph handler adds/modifies modules, and re-init here, in order
+      // to ensure the dependency structure is alright.
       if (!graph) {
         graph = new ConfigGraph(resolvedModules, moduleTypes)
       }
-
-      const modules = graph.getModules()
 
       const { addBuildDependencies, addRuntimeDependencies, addModules } = await actions.augmentGraph({
         pluginName: provider.name,
         log,
         providers,
-        modules,
+        modules: resolvedModules,
       })
 
       const configContext = new ModuleConfigContext({
         garden: this,
         resolvedProviders: providers,
         variables: this.variables,
-        dependencyConfigs: modules,
-        dependencyVersions: fromPairs(modules.map((m) => [m.name, m.version])),
+        dependencyConfigs: resolvedModules,
+        dependencyVersions: fromPairs(resolvedModules.map((m) => [m.name, m.version])),
         runtimeContext,
       })
 

@@ -350,7 +350,7 @@ export class TestGarden extends Garden {
   }
 
   /**
-   * Returns module configs that are registered in this context, fully resolved and configured.
+   * Returns modules that are registered in this context, fully resolved and configured.
    * Scans for modules in the project root and remote/linked sources if it hasn't already been done.
    */
   async resolveModules({ log, runtimeContext }: { log: LogEntry; runtimeContext?: RuntimeContext }): Promise<Module[]> {
@@ -359,7 +359,7 @@ export class TestGarden extends Garden {
   }
 
   /**
-   * Helper to get a single module config. We don't put this on the Garden class because it is highly inefficient
+   * Helper to get a single module. We don't put this on the Garden class because it is highly inefficient
    * and not advisable except for testing.
    */
   async resolveModule(name: string) {

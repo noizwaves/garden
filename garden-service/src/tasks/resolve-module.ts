@@ -57,6 +57,7 @@ export class ResolveModuleConfigTask extends BaseTask {
 
     return deps.map((d) => {
       const name = d[1]
+      const contextKey = d[2] // The template key being referenced on the module
       const moduleConfig = rawConfigs[name]
 
       if (!moduleConfig) {
@@ -70,7 +71,7 @@ export class ResolveModuleConfigTask extends BaseTask {
         )
       }
 
-      if (d[2] === "version") {
+      if (contextKey === "version") {
         // Need the full module resolved to get the version
         return new ResolveModuleTask({
           garden: this.garden,
@@ -184,7 +185,7 @@ export class ResolveModuleTask extends BaseTask {
         resolvedProviders: this.resolvedProviders,
         runtimeContext: this.runtimeContext,
       }),
-      // As well as all the module dependencies
+      // As well as all the module's build dependencies
       ...deps,
     ]
   }
@@ -211,7 +212,7 @@ function getResolvedModuleConfigs(dependencyResults: TaskResults): ModuleConfig[
     .map((r) => r!.output) as ModuleConfig[]
 }
 
-function getResolvedModules(dependencyResults: TaskResults): Module[] {
+export function getResolvedModules(dependencyResults: TaskResults): Module[] {
   return Object.values(dependencyResults)
     .filter((r) => r && r.type === "resolve-module")
     .map((r) => r!.output) as Module[]
